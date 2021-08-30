@@ -94,7 +94,7 @@
 
 #include "ff.h"			/* FatFs configurations and declarations */
 #include "diskio.h"		/* Declarations of low level disk I/O functions */
-#include "rtc.h" 		/* For getting rtc time */
+#include "../../mmcbb.c"
 
 
 /*--------------------------------------------------------------------------
@@ -568,6 +568,12 @@ int chk_chr (const char* str, int chr) {
 	return *str;
 }
 
+// get fattime
+
+DWORD get_fattime(void)
+{
+  return 0;
+}
 
 
 /*-----------------------------------------------------------------------*/
@@ -709,28 +715,6 @@ void clear_lock (	/* Clear lock entries of the volume */
 	}
 }
 #endif
-
-
-/*-----------------------------------------------------------------------*/
-/* Get RTC time                                                  */
-/*-----------------------------------------------------------------------*/
-
-DWORD get_fattime (void)
-{
-	DWORD res;
-	RTC_t rtc;
-
-	rtc_gettime( &rtc );
-	
-	res =  (((DWORD)rtc.year - 1980) << 25)
-			| ((DWORD)rtc.month << 21)
-			| ((DWORD)rtc.mday << 16)
-			| (WORD)(rtc.hour << 11)
-			| (WORD)(rtc.min << 5)
-			| (WORD)(rtc.sec >> 1);
-
-	return res;
-}
 
 
 

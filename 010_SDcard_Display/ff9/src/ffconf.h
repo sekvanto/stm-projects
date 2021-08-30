@@ -14,6 +14,11 @@
 / Functions and Buffer Configurations
 /----------------------------------------------------------------------------*/
 
+#define FF_FS_NORTC    1
+#define FF_NORTC_MON   1
+#define FF_NORTC_MDAY  1
+#define FF_NORTC_YEAR  2018
+
 #define	_FS_TINY		0	/* 0:Normal or 1:Tiny */
 /* When _FS_TINY is set to 1, FatFs uses the sector buffer in the file system
 /  object instead of the sector buffer in the individual file object for file

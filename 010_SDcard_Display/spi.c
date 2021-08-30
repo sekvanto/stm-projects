@@ -4,6 +4,19 @@
 #include <stm32f10x_spi.h>
 #include "spi.h"
 
+// Initialize chip select PC10
+void csInit() {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+
+    GPIO_InitTypeDef Gpio;
+    GPIO_StructInit(&Gpio);
+    
+    Gpio.GPIO_Pin = GPIO_Pin_10;
+    Gpio.GPIO_Mode = GPIO_Mode_Out_PP;
+    Gpio.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_Init(GPIOC, &Gpio);
+}
+
 void spiInit(SPI_TypeDef *SPIx)
 {
     SPI_InitTypeDef SPI_InitStructure;
@@ -42,6 +55,8 @@ void spiInit(SPI_TypeDef *SPIx)
     SPI_Init(SPIx, &SPI_InitStructure);
 
     SPI_Cmd(SPIx, ENABLE);
+
+    csInit();
 }
 
 int spiReadWrite(SPI_TypeDef* SPIx, uint8_t *rbuf, const uint8_t *tbuf, int cnt, enum spiSpeed speed)

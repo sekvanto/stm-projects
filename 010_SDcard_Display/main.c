@@ -1,8 +1,9 @@
 #include "stm32f10x.h"
-#include "mmcbb.c"
-#include "ff9/src/ff.h"
-#include "xprintf.h"
+#include "stm32f10x_usart.h"
 #include "uart.h"
+#include "spi.h"
+#include "xprintf.h"
+#include "ff9/src/ff.h"
 
 void myputchar(unsigned char c)
 {
@@ -16,23 +17,31 @@ unsigned char mygetchar()
 
 int main(void)
 {
-    xprintf("\nStart!!!\n");
+    uart_open(USART1, 9600, USART_Mode_Tx | USART_Mode_Rx);
+    spiInit(SPI2);
 
     xfunc_in = mygetchar;
     xfunc_out = myputchar;
 
+    xprintf("\nStart!!!\n"); // WORKS
+
     FATFS Fatfs;
     FRESULT rc;
     FIL Fil;
-    UINT bw;
+    UINT bw, br; // bytes written, bytes read
+    unsigned char Buff[1000];
 
-    configure_sys_tick();
+    // Configure SysTick Timer
+    if(SysTick_Config(SystemCoreClock / 1000))
+        while(1);
 
-    f_mount(0, &Fatfs); /* Register volume work area */
+    f_mount(0, &Fatfs); // Register volume work area
     
-    /*
-    xprintf("\nOpen an existing file (message.txt).\n");
-    rc = f_open(&Fil, "MESSAGE.TXT", FA_READ);
+
+    //*
+
+    xprintf("\nOpen an existing file (hello.txt).\n");
+    rc = f_open(&Fil, "HELLO.TXT", FA_READ);
     
     if (!rc) {
         xprintf("\nType the file content.\n");
@@ -48,16 +57,28 @@ int main(void)
         rc = f_close(&Fil);
         if (rc) return(rc);
     }
-    */
 
+    //*/
+
+
+    /*
+    
     xprintf("\nCreate a new file (hello.txt).\n");
-    rc = f_open(&Fil, "HELLO.TXT", FA_WRITE | FA_CREATE_ALWAYS);
+    rc = f_open(&Fil, "HELLO.TXT", FA_OPEN_EXISTING | FA_WRITE);
     if (rc) return(rc);
 
-    xprintf("\nWrite a text data. (Hello world!)\n");
-    rc = f_write(&Fil, "Hello world!\r\n", 14, &bw);
+    xprintf("\nWrite a text data. (Hello sek!)\n");
+    char text[] = "\r\nHello sek!\r\n";
+    rc = f_write(&Fil, text, sizeof(text), &bw);
     if (rc) return(rc);
     xprintf("%u bytes written.\n", bw);
+
+    */
+
+    f_close(&Fil);
+    f_mount(0, 0);
+    
+    uart_close(USART1);
 }
 
 #ifdef USE_FULL_ASSERT

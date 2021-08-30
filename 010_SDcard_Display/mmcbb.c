@@ -57,12 +57,6 @@ void SysTick_Handler(void){
         TimingDelay --;
 }
 
-void configure_sys_tick(){
-	// Configure SysTick Timer
-    if(SysTick_Config(SystemCoreClock / 1000))
-        while(1);
-}
-
 /*! stopheader !*/
 
 

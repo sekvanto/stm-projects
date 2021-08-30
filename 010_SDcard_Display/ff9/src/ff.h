@@ -246,9 +246,9 @@ TCHAR* f_gets (TCHAR*, int, FIL*);					/* Get a string from the file */
 /* Additional user defined functions                            */
 
 /* RTC function */
-#if !_FS_READONLY
+//#if !_FS_READONLY
 DWORD get_fattime (void);
-#endif
+//#endif
 
 /* Unicode support functions */
 #if _USE_LFN						/* Unicode - OEM code conversion */
