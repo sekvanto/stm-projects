@@ -1,5 +1,8 @@
-Tasks from the book\
-Discovering the STM32 Microcontroller\
-Geoffrey Brown\
-©2012\
-June 5, 2016
+Here i save completed exercises from the following book:
+
+```
+Discovering the STM32 Microcontroller
+Geoffrey Brown
+```
+
+I use stm32vldiscovery, cmsis and gcc for the projects.
