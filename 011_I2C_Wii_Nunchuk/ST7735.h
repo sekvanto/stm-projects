@@ -18,6 +18,11 @@
 
 #define SPILCD SPI2
 
+#define CHAR_WIDTH   5
+#define CHAR_HEIGHT  7
+#define CHAR_CONTAINER_WIDTH  6
+#define CHAR_CONTAINER_HEIGHT 10 // character container height
+
 /* MADCTL [MY MX MV]
  *    MY  row address order   1 (bottom to top), 0 (top to bottom)
  *    MX  col address order   1 (right to left), 0 (left to right)

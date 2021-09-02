@@ -7,8 +7,8 @@ ASFLAGS = -g
 
 # object files
 
-OBJS  = $(STARTUP) main.o i2c.o spi.o ST7735.o
-OBJS += stm32f10x_gpio.o stm32f10x_rcc.o stm32f10x_spi.o stm32f10x_i2c.o
+OBJS  = $(STARTUP) main.o i2c.o spi.o ST7735.o nunchuk.o
+OBJS += stm32f10x_gpio.o stm32f10x_rcc.o stm32f10x_spi.o stm32f10x_i2c.o 
 
 LDLIBS += -lm
 

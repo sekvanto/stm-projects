@@ -51,11 +51,6 @@
 #define ST7735_RAMRD 0x2E
 #define ST7735_COLMOD 0x3A
 
-#define CHAR_WIDTH   5
-#define CHAR_HEIGHT  7
-#define CHAR_CONTAINER_WIDTH  6
-#define CHAR_CONTAINER_HEIGHT 10
-
 #define MAX_LINE_LEN (int) (ST7735_width / CHAR_CONTAINER_WIDTH)   // Max number of characters in line
 #define MAX_LINE_NUM (int) (ST7735_height / CHAR_CONTAINER_HEIGHT) // Max number of lines
 
