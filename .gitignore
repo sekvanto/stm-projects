@@ -30,3 +30,9 @@
 
 011_I2C_Wii_Nunchuk/*.d
 011_I2C_Wii_Nunchuk/*.o
+
+012_TIM_LED/*.d
+012_TIM_LED/*.o
+
+013_TIM_Servo/*.d
+013_TIM_Servo/*.o
