@@ -3,23 +3,49 @@
 #include <stm32f10x_gpio.h>
 #include "delay.c"
 #include "servo.h"
+#include "nunchuk.h"
+
+// only 180 degrees rotation is fine for this exercise
+void endless_loop_rotation()
+{
+    int pw = 30; // pulse width, range 30...130
+    int step = 1; // alternates direction
+    
+    while (1) {
+        if (pw == 130)
+            step = -1;
+        if (pw == 30)
+            step = 1;
+
+        pw += step;
+        TIM_SetCompare2(TIM2, pw);
+        Delay(50);
+    }
+}
+
+// Uses joystick X coordinate to calculate pulse width
+uint16_t get_pw(uint8_t jx)
+{
+    // range conversion: from 0...255 to 0...100
+    uint16_t result = (100 * jx) / JOYSTICK_MAX;
+
+    // range conversion: from 0...100 to 30...130
+    return result + 30;
+}
 
 int main()
 {
     servo_init();
+    nunchuk_init();
+    NunchukState n;
 
     //TIM_SetCompare2(TIM2, 50); // one single turn
 
-    int pw = 0; // pulse width, range 0...999
-    int step = -1; // alternates positive and negative
-    while (1)
-    {
-        if (pw == 100)
-            pw = 0;
-        pw++;
+    while (1) {
+        get_nunchuk_state(&n);
+        uint16_t pw = get_pw(n.jx);
         TIM_SetCompare2(TIM2, pw);
-        Delay(50);
-    }
+    }    
 }
 
 #ifdef USE_FULL_ASSERT
