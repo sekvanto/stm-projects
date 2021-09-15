@@ -36,3 +36,6 @@
 
 013_TIM_Servo/*.d
 013_TIM_Servo/*.o
+
+014_Ultrasonic_Sensor/*.d
+014_Ultrasonic_Sensor/*.o
