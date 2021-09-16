@@ -107,7 +107,11 @@ static void echo_init()
 }
 */
 
-// Here i tried to utilize
+// Here i tried to utilize TIM2 CH2 instead of TIM1 CH1 for Input Capture,
+// but neither configuration was successful. CLK register works as expected,
+// ranging between 0...9999 and auto reloading
+// But CCR1 and CCR2 (capture/compare registers) don't save TimeStamps - 
+// They always contain Zero. This is a reminder for me in the future to fix it.
 static void echo_init()
 {
     // reconfigure PA1 to alternative function push-pull
