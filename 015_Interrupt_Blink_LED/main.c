@@ -49,7 +49,7 @@ int main(void){
 // Each cycle is 2 ms, contains 2 ticks 
 static __IO uint16_t TimeLeftBeforeBlink = 500; // 250 = bit_set, 0 = bit_reset
 
-void TIM2_IRQHandler(void)
+void TIM2_IRQHandler(void) // Is triggered on every tick
 {
     if (TimeLeftBeforeBlink == 250) {
         GPIO_WriteBit(GPIOC, GPIO_Pin_9, Bit_SET);
