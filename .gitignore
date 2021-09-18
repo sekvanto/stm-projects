@@ -45,3 +45,6 @@
 
 016_UART_Flow_Control/*.d
 016_UART_Flow_Control/*.o
+
+017_External_Interrupts_Blink/*.d
+017_External_Interrupts_Blink/*.o
