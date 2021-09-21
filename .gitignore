@@ -48,3 +48,6 @@
 
 017_External_Interrupts_Blink/*.d
 017_External_Interrupts_Blink/*.o
+
+018_SPI_DMA_BMP_Images/*.d
+018_SPI_DMA_BMP_Images/*.o
