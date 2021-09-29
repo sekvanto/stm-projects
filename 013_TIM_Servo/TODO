@@ -1,1 +1,0 @@
-It's still using TIM2 CH2... I didn't manage to set up TIM4 CH3 for whatever reason (probably some minor issue). So, first task is to move servo control to TIM4 CH3.

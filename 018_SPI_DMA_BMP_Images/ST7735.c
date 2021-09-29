@@ -25,7 +25,7 @@
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_spi.h>
 #include <stdint.h>
-#include "spidma.h"
+#include "spi.h"
 #include "ST7735.h"
 #include "glcdfont.c"
 

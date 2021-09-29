@@ -1,10 +1,11 @@
-#include <stm32f10x_usart.h>
-#include <stm32f10x_spi.h>
-#include "ST7735.h"
+#include "stm32f10x.h"
+#include "stm32f10x_usart.h"
 #include "uart.h"
+#include "spi.h"
 #include "xprintf.h"
-#include "spidma.h"
 #include "ff9/src/ff.h"
+#include "ST7735.h"
+#include "bmp.h"
 
 void myputchar(unsigned char c)
 {
@@ -16,61 +17,44 @@ unsigned char mygetchar()
     return uart_getc(USART1);
 }
 
-void outputString() {
-    ST7735_fillScreen(BLACK);
-    ST7735_outputString("HELLO WORLD", BLACK, YELLOW);
+void loop_through_images() {
+    DIR Dir;
+    FRESULT res;
+    FILINFO fno;
+    FATFS Fatfs;
+
+    f_mount(0, &Fatfs); // Register volume work area
+
+    f_opendir(&Dir, "/");
+    for (;;) {
+        res = f_readdir(&Dir, &fno);                   /* Read a directory item */
+        if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+        if (fno.fname[0] == '.') continue;             /* Ignore dot entry */
+        if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+            continue;
+        } else {
+            bmp_display(fno.fname);
+            Delay(250);
+        }
+    }
+    f_mount(0, 0);
 }
 
-void init()
+int main(void)
 {
     ST7735_init();
-    outputString(); // remove later
 
     uart_open(USART1, 9600, USART_Mode_Tx | USART_Mode_Rx);
-    spiInit(SPI1); // for sd card
+    spiInit(SPI2); // Display = SPI1, sdCard = SPI2
 
     xfunc_in = mygetchar;
     xfunc_out = myputchar;
 
-    xprintf("\nStart!!!\n"); // WORKS
-}
+    xprintf("\nStart\n"); // works
 
-int sdcard_test()
-{
-    FATFS Fatfs;
-    FRESULT rc;
-    FIL Fil;
-    UINT bw, br; // bytes written, bytes read
-    unsigned char Buff[1000];
-
-    f_mount(0, &Fatfs); // Register volume work area
-    
-    xprintf("\nOpen an existing file (hello.txt).\n");
-    rc = f_open(&Fil, "hello.txt", FA_READ);
-    
-    if (!rc) {
-        xprintf("\nType the file content.\n");
-        for (;;) {
-            // Read a chunk of file
-            rc = f_read(&Fil, Buff, sizeof Buff, &br);
-            if (rc || !br) break; // Error or end of file
-                for (int i = 0; i < br; i++) // Type the data
-                    myputchar(Buff[i]);
-        }
-        if (rc) return(rc);
-        xprintf("\nClose the file.\n");
-        rc = f_close(&Fil);
-        if (rc) return(rc);
+    while (1) {
+        loop_through_images();
     }
-
-    f_close(&Fil);
-    f_mount(0, 0);
-}
-
-int main()
-{
-    init();
-    sdcard_test();
 }
 
 #ifdef USE_FULL_ASSERT
