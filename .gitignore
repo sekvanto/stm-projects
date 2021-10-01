@@ -51,3 +51,12 @@
 
 018_SPI_DMA_BMP_Images/*.d
 018_SPI_DMA_BMP_Images/*.o
+
+019_Waveform_Generator/*.d
+019_Waveform_Generator/*.o
+
+020_Software_Driven_DAC_Conversion/*.d
+020_Software_Driven_DAC_Conversion/*.o
+
+021_Interrupt_Driven_DAC_Conversion/*.d
+021_Interrupt_Driven_DAC_Conversion/*.o
