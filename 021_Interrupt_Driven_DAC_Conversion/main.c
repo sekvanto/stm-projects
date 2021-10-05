@@ -9,9 +9,9 @@ void tim_init();
 
 int main(void){
 
-    // Configure clocks for GPIOC and TIM2
+    // Configure clocks for TIM3
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
     // Configure NVIC
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
