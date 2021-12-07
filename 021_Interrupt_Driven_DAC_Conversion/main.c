@@ -2,102 +2,100 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_tim.h>
+#include <stm32f10x_dac.h>
 #include <misc.h>
+#include "sine_wave.c"
 
-void TIM2_IRQHandler(void);
+void TIM3_IRQHandler(void);
 void tim_init();
+void dac_init();
 
 int main(void){
 
-    // Configure clocks for TIM3
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    // Configure clocks for TIM3 and DAC
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 | RCC_APB1Periph_DAC, ENABLE);
 
     // Configure NVIC
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 
-    // Configure timer
+    dac_init();
     tim_init();
-
-    // Configure green LED on PC9
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_StructInit(&GPIO_InitStructure);
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
     // Configure and enable TIM2 interrupt
     NVIC_InitTypeDef NVIC_InitStructure;
     // No StructInit call in API
-    NVIC_InitStructure.NVIC_IRQChannel = 28; // TIM2_IRQn for STM32F10X_MD_VL
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+    NVIC_InitStructure.NVIC_IRQChannel = 29; // TIM3_IRQn for STM32F10X_MD_VL
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
     // Enable Timer Interrupt , enable timer
-    TIM_ITConfig(TIM2, TIM_IT_Update , ENABLE);
-    TIM_Cmd(TIM2, ENABLE);
-    //TIM_SetCompare2(TIM2, 1);
+    TIM_ITConfig(TIM3, TIM_IT_Update , ENABLE);
+    TIM_Cmd(TIM3, ENABLE);
     
     while(1) { /* do nothing */ }
 }
 
-// 500 ticks need to complete 500 ms
-// 250 cycles
-// Each cycle is 2 ms, contains 2 ticks 
-static __IO uint16_t TimeLeftBeforeBlink = 500; // 250 = bit_set, 0 = bit_reset
+static __IO uint16_t waveArrIndex = 0;
 
-void TIM2_IRQHandler(void) // Is triggered on every tick
+void TIM3_IRQHandler(void) // Is triggered on every tick
 {
-    if (TimeLeftBeforeBlink == 250) {
-        GPIO_WriteBit(GPIOC, GPIO_Pin_9, Bit_SET);
-        TimeLeftBeforeBlink--;
+    if (waveArrIndex >= ARR_SIZE) {
+        waveArrIndex = 0;
     }
-    else if (TimeLeftBeforeBlink == 0) {
-        TimeLeftBeforeBlink = 500; // Reloading
-        GPIO_WriteBit(GPIOC, GPIO_Pin_9, Bit_RESET);
-    }
-    else
-        TimeLeftBeforeBlink--;
-        
-    TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
+    DAC_SetChannel1Data(DAC_Align_12b_R, a441[waveArrIndex]);
+    waveArrIndex++;
+    TIM_ClearITPendingBit(TIM3,TIM_IT_Update);
 }
 
 void tim_init()
 {
-    // reconfigure PA1 to alternative function push-pull
-    GPIO_InitTypeDef Gpio;
-    GPIO_StructInit(&Gpio);
-    
-    Gpio.GPIO_Pin = GPIO_Pin_1;
-    Gpio.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_Init(GPIOA, &Gpio);
-
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
     TIM_OCInitTypeDef TIM_OCInitStructure;
     
     // enable timer clock
     
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 , ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 , ENABLE);
     
-    // configure timer
-    // PWM frequency = 1 hz with 24,000,000 hz system clock
-
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-    TIM_TimeBaseStructure.TIM_Prescaler = SystemCoreClock/1000 - 1;
-    TIM_TimeBaseStructure.TIM_Period = 2 - 1; // 0..1
+    TIM_TimeBaseStructure.TIM_Prescaler = 0;
+
+  	// set timer1 auto-reload value
+	// so the timer overflow will occur with a frequency of 24MHz/544=approx. 44.1kHz
+    
+    TIM_TimeBaseStructure.TIM_Period = 544; //544; //450
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
     TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
-    // PWM1 Mode configuration: Channel2
-    // Edge-aligned; not single pulse mode
+    // Configure the TIM3 output trigger so that it occurs on update events
+    TIM_SelectOutputTrigger(TIM3, TIM_TRGOSource_Update);
+}
 
-    TIM_OCStructInit(&TIM_OCInitStructure);
-    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OC2Init(TIM2, &TIM_OCInitStructure);
+void dac_init()
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    DAC_InitTypeDef DAC_InitStructure;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA , ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC , ENABLE);
+
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // DAC channel1 Configuration
+
+    DAC_StructInit(&DAC_InitStructure);
+    DAC_InitStructure.DAC_OutputBuffer = DAC_OutputBuffer_Enable;
+    DAC_InitStructure.DAC_Trigger = DAC_Trigger_T3_TRGO;
+    DAC_Init(DAC_Channel_1 , &DAC_InitStructure);
+
+    // Enable DAC
+
+    DAC_Cmd(DAC_Channel_1 , ENABLE);
 }
 
 #ifdef USE_FULL_ASSERT

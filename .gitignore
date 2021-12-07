@@ -60,3 +60,6 @@
 
 021_Interrupt_Driven_DAC_Conversion/*.d
 021_Interrupt_Driven_DAC_Conversion/*.o
+
+022_DMA_DAC_WAV_Player/*.d
+022_DMA_DAC_WAV_Player/*.o
