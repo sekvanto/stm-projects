@@ -63,3 +63,6 @@
 
 022_DMA_DAC_WAV_Player/*.d
 022_DMA_DAC_WAV_Player/*.o
+
+023_ADC_Potentiometer_LED/*.d
+023_ADC_Potentiometer_LED/*.o
