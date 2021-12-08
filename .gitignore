@@ -69,3 +69,6 @@
 
 024_ADC_Timer_Driven/*.d
 024_ADC_Timer_Driven/*.o
+
+025_Newlib_hello/*.d
+025_Newlib_hello/*.o
