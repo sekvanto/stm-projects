@@ -75,3 +75,6 @@
 
 026_Freertos_BlinkingLight/*.d
 026_Freertos_BlinkingLight/*.o
+
+027_Freertos_UART_Mutex/*.d
+027_Freertos_UART_Mutex/*.o
