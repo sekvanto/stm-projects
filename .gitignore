@@ -72,3 +72,6 @@
 
 025_Newlib_hello/*.d
 025_Newlib_hello/*.o
+
+026_Freertos_BlinkingLight/*.d
+026_Freertos_BlinkingLight/*.o
