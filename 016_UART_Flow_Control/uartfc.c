@@ -156,6 +156,9 @@ int uart_close(uint8_t uart)
 
 }
 
+/* 
+ * Is to be used with Delay(10 ms)
+ */
 ssize_t uart_write(uint8_t uart, const uint8_t *buf, size_t nbyte)
 {
   uint8_t data;
@@ -163,20 +166,31 @@ ssize_t uart_write(uint8_t uart, const uint8_t *buf, size_t nbyte)
 
   if (uart == 1 && nbyte)
     {
-      i = Enqueue(&UART1_TXq, buf, nbyte);
-  
-      // if we added something and the Transmitter isn't working
-      // give it a kick by turning on the buffer empty interrupt
+      while (i < nbyte)
+      {
+        int write = Enqueue(&UART1_TXq, buf, nbyte);
+        i += write;
+        buf += write;
+        nbyte -= write;
+      }
 
-      if (!TxPrimed)
-	{
-	  TxPrimed = 1;
+      // send i bytes
+      for (int j = 0; j < i; j++)
+      {
+        // if we added something and the Transmitter isn't working
+        // give it a kick by turning on the buffer empty interrupt
+        
+        if (!TxPrimed)
+        {
+          TxPrimed = 1;
 
-	  // This implementation guarantees that USART_IT_Config
-	  // is not called simultaneously in the interrupt handler and here.
+          // This implementation guarantees that USART_IT_Config
+          // is not called simultaneously in the interrupt handler and here.
 
-	  USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
-	}
+          USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+          while (USART_GetITStatus(USART1, USART_IT_TXE) != RESET);
+        }
+      }
     }
   return i;
 }
@@ -185,10 +199,19 @@ ssize_t uart_read (uint8_t uart, uint8_t *buf, size_t nbyte)
 {
   int i = 0;
 
+  // somehow it captures 2n bytes instead of n,
+  // probably my bug, but temporarily let it be 2n
+  nbyte *= 2;
+
   if (uart == 1)
     {
-
-      i = Dequeue(&UART1_RXq, buf, nbyte);
+      while (i < nbyte)
+      {
+        int read = Dequeue(&UART1_RXq , buf, nbyte);
+        i += read;
+        buf += read;
+        nbyte -= read;
+      }
 
       // If the queue has fallen below high water mark, enable nRTS
 
@@ -230,7 +253,7 @@ void USART1_IRQHandler(void)
 
       USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 
-      // buffer the data (or toss it if there's no room 
+      // buffer the data (or toss it if there's no room)
       // Flow control is supposed to prevent this
 
       data = USART_ReceiveData(USART1) & 0xff;

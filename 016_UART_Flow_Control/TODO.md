@@ -1,1 +1,6 @@
-It's yet to be complete; something seems to be wrong either with the module or with my converter - while running the `screen`, it reads one character and keeps outputting it until the next button is pressed. I'm fine with the polling implementation *for now*, and i learned what i needed about interrupts, so i'm moving on a bit. Whenever i require exactly this implementation, i'll certainly return to this module and complete it, but currently i've been using uart exclusively for debug and informational purpose, and polling version suffice for this purpose
+The module is basically done. There are two tiny pitfalls:
+
+1. `uart_read()` internally uses size of `nbyte *= 2`. This, i suspect, is not fully correct, but this hack works fine.
+2. Beware, when you use `uart_write()`, always add `Delay(10)` (10 ms) after it.
+
+Later i might need to fix both hacks. But it suffices for now.
