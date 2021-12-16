@@ -78,3 +78,6 @@
 
 027_Freertos_UART_Mutex/*.d
 027_Freertos_UART_Mutex/*.o
+
+028_Freertos_Multithreaded_Queues/*.d
+028_Freertos_Multithreaded_Queues/*.o
