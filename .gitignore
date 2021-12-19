@@ -81,3 +81,6 @@
 
 028_Freertos_Multithreaded_Queues/*.d
 028_Freertos_Multithreaded_Queues/*.o
+
+029_Freertos_SPI_Display/*.d
+029_Freertos_SPI_Display/*.o

@@ -3,7 +3,7 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_spi.h>
 #include <stm32f10x_dma.h>
-#include "spi.h"
+#include "spidma.h"
 
 #define MIN_DMA_BLOCK 4 + 1
 
@@ -47,13 +47,16 @@ void spiInit(SPI_TypeDef *SPIx)
         GPIO_Init(GPIOA, &GPIO_InitStructure);
     }
 
+    // DMA clock
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
     SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
     SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
     SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
     SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
     SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
     SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-    SPI_InitStructure.SPI_BaudRatePrescaler = speeds[SPI_SLOW];
+    SPI_InitStructure.SPI_BaudRatePrescaler = speeds[SPI_FAST];
     SPI_InitStructure.SPI_CRCPolynomial = 7;
     SPI_Init(SPIx, &SPI_InitStructure);
 
@@ -68,6 +71,12 @@ void spiInit(SPI_TypeDef *SPIx)
  */
 static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *rbuf, unsigned count)
 {
+    int send    = (tbuf) ? 1 : 0;
+    int receive = (rbuf) ? 1 : 0;
+    if (!send && !receive) return 0;
+
+    uint16_t dummy[] = {0xffff};
+
     DMA_Channel_TypeDef *rxChan, *txChan;
     uint32_t rxFlag, txFlag;
 
@@ -94,7 +103,7 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
     
     DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&(SPIx->DR));
     DMA_InitStructure.DMA_PeripheralDataSize = (half) ? DMA_PeripheralDataSize_Byte : DMA_PeripheralDataSize_HalfWord;
-    DMA_InitStructure.DMA_MemoryDataSize = (half) ? DMA_PeripheralDataSize_Byte : DMA_PeripheralDataSize_HalfWord;
+    DMA_InitStructure.DMA_MemoryDataSize = (half) ? DMA_MemoryDataSize_Byte : DMA_MemoryDataSize_HalfWord;
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
     DMA_InitStructure.DMA_BufferSize = count;
     DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
@@ -103,15 +112,15 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
 
     // Rx Channel
     
-    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)rbuf;
-    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (receive) ? (uint32_t)rbuf : (uint32_t)dummy;
+    DMA_InitStructure.DMA_MemoryInc = (receive) ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
     DMA_Init(rxChan, &DMA_InitStructure);
     
     // Tx channel
     
-    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)tbuf;
-    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (send) ? (uint32_t)tbuf : (uint32_t)dummy;
+    DMA_InitStructure.DMA_MemoryInc = (send) ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
     DMA_Init(txChan, &DMA_InitStructure);
 
@@ -125,9 +134,13 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
 
     // Wait for completion
     
-    while (DMA_GetFlagStatus(rxFlag) == RESET);
-    //while (DMA_GetFlagStatus(txFlag) == RESET);
-    
+    if (send) {
+        while (DMA_GetFlagStatus(txFlag) == RESET);
+    } 
+    if (receive) {
+        while (DMA_GetFlagStatus(rxFlag) == RESET);
+    }
+
     // Disable channels
 
     DMA_Cmd(rxChan, DISABLE);

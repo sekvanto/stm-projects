@@ -196,7 +196,7 @@ void cs_dc_rstInit() {
     
   Gpio.GPIO_Pin = GPIO_PIN_SCE | GPIO_PIN_DC | GPIO_PIN_RST;
   Gpio.GPIO_Mode = GPIO_Mode_Out_PP;
-  Gpio.GPIO_Speed = GPIO_Speed_50MHz; //2
+  Gpio.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(LCD_PORT, &Gpio);
 }
 

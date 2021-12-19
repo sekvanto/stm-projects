@@ -1,0 +1,1 @@
+A SPI interface supporting multi-threading and DMA. Callbacks are used for device selection. The interface is tested with the LCD with two threads competing to use the interface for drawing colored rectangles at random locations (different colors for the two threads).

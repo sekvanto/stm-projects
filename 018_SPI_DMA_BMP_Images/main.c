@@ -1,7 +1,7 @@
 #include "stm32f10x.h"
 #include "stm32f10x_usart.h"
 #include "uart.h"
-#include "spi.h"
+#include "spidma.h"
 #include "xprintf.h"
 #include "ff9/src/ff.h"
 #include "ST7735.h"
@@ -43,6 +43,7 @@ void loop_through_images() {
 int main(void)
 {
     ST7735_init();
+    ST7735_fillScreen(MAGENTA);
 
     uart_open(USART1, 9600, USART_Mode_Tx | USART_Mode_Rx);
     spiInit(SPI2); // Display = SPI1, sdCard = SPI2

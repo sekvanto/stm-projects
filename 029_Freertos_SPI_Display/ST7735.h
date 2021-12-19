@@ -16,7 +16,7 @@
 #define YELLOW          0x07FF  
 #define WHITE           0xFFFF
 
-#define SPILCD SPI1
+#define SPILCD SPI2
 
 /* MADCTL [MY MX MV]
  *    MY  row address order   1 (bottom to top), 0 (top to bottom)
