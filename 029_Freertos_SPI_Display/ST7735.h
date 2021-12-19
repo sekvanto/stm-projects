@@ -16,7 +16,7 @@
 #define YELLOW          0x07FF  
 #define WHITE           0xFFFF
 
-#define SPILCD SPI2
+#define SPILCD SPI1
 
 /* MADCTL [MY MX MV]
  *    MY  row address order   1 (bottom to top), 0 (top to bottom)
@@ -42,6 +42,8 @@ void ST7735_outputString(char *line, uint16_t background, uint16_t foreground);
 
 void ST7735_drawLine(uint16_t x0, uint16_t y0,
 					 uint16_t x1, uint16_t y1, uint16_t color);
+void ST7735_drawRectangle(uint16_t x, uint16_t y,
+						  uint16_t width, uint16_t height, uint16_t color);
 void ST7735_drawCircle(uint16_t x_centre, uint16_t y_centre,
 					   uint16_t r, uint16_t color);
 

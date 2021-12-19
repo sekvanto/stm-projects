@@ -24,8 +24,10 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
 #include <stm32f10x_spi.h>
+#include <stm32f10x_tim.h>
+#include <misc.h>
 #include <stdint.h>
-#include "spidma.h"
+#include "spidma_freertos.h"
 #include "ST7735.h"
 #include "glcdfont.c"
 
@@ -119,6 +121,18 @@ static const struct ST7735_cmdBuf initializers[] = {
 
 void Delay(uint32_t nTime);
 
+void selectCS(int select)
+{
+  if (select)
+  {
+    GPIO_ResetBits(LCD_PORT,GPIO_PIN_SCE);
+  }
+  else
+  {
+    GPIO_SetBits(LCD_PORT,GPIO_PIN_SCE);
+  }
+}
+
 int abs(int x) {
   if (x < 0)
     return -x;
@@ -128,17 +142,13 @@ int abs(int x) {
 static void LcdWrite(char dc, const char *data, int nbytes)
 {
   GPIO_WriteBit(LCD_PORT,GPIO_PIN_DC, dc);  // dc 1 = data, 0 = control
-  GPIO_ResetBits(LCD_PORT,GPIO_PIN_SCE);
-  spiReadWrite(SPILCD, 0, data, nbytes, LCDSPEED);
-  GPIO_SetBits(LCD_PORT,GPIO_PIN_SCE); 
+  spiReadWrite(SPILCD, 0, data, nbytes, LCDSPEED, selectCS);
 }
 
 static void LcdWrite16(char dc, const uint16_t *data, int cnt)
 {
   GPIO_WriteBit(LCD_PORT,GPIO_PIN_DC, dc);  // dc 1 = data, 0 = control
-  GPIO_ResetBits(LCD_PORT,GPIO_PIN_SCE);
-  spiReadWrite16(SPILCD, 0, data, cnt, LCDSPEED);
-  GPIO_SetBits(LCD_PORT,GPIO_PIN_SCE); 
+  spiReadWrite16(SPILCD, 0, data, cnt, LCDSPEED, selectCS);
 }
 
 static void ST7735_writeCmd(uint8_t c)
@@ -196,8 +206,41 @@ void cs_dc_rstInit() {
     
   Gpio.GPIO_Pin = GPIO_PIN_SCE | GPIO_PIN_DC | GPIO_PIN_RST;
   Gpio.GPIO_Mode = GPIO_Mode_Out_PP;
-  Gpio.GPIO_Speed = GPIO_Speed_2MHz;
+  Gpio.GPIO_Speed = GPIO_Speed_50MHz; //2
   GPIO_Init(LCD_PORT, &Gpio);
+}
+
+// Initialize timer for Delay() function
+void tim_init()
+{
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+    TIM_OCInitTypeDef TIM_OCInitStructure;
+    
+    // enable timer clock
+    
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3 , ENABLE);
+    
+    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+    TIM_TimeBaseStructure.TIM_Prescaler = 0;
+
+  	// set timer1 auto-reload value
+	  // so the timer overflow will occur with a frequency of 24MHz/24000 = 1000 Hz (1 ms)
+    
+    TIM_TimeBaseStructure.TIM_Period = 24000;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+    // Configure the TIM3 output trigger so that it occurs on update events
+    //TIM_SelectOutputTrigger(TIM3, TIM_TRGOSource_Update);
+
+    // Configure and enable TIM3 interrupt
+    NVIC_InitTypeDef NVIC_InitStructure;
+    // No StructInit call in API
+    NVIC_InitStructure.NVIC_IRQChannel = 29; // TIM3_IRQn for STM32F10X_MD_VL
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 }
 
 void ST7735_init() 
@@ -209,11 +252,7 @@ void ST7735_init()
 
   spiInit(SPILCD);
   cs_dc_rstInit();
-
-  // Configure SysTick Timer
-  if(SysTick_Config(SystemCoreClock / 1000))
-    while(1);
-
+  tim_init();
 
   // set cs, reset low
 
@@ -345,6 +384,14 @@ void ST7735_drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_
   }
 }
 
+void ST7735_drawRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
+{
+  ST7735_drawLine(x, y, x, y + height, color);
+  ST7735_drawLine(x, y, x + width, y, color);
+  ST7735_drawLine(x + width, y, x + width, y + height, color);
+  ST7735_drawLine(x, y + height, x + width, y + height, color);
+}
+
 /* https://en.wikipedia.org/wiki/Midpoint_circle_algorithm */
 
 void ST7735_drawCircle(uint16_t x_centre, uint16_t y_centre, uint16_t r, uint16_t color)
@@ -383,15 +430,27 @@ void ST7735_drawCircle(uint16_t x_centre, uint16_t y_centre, uint16_t r, uint16_
   }
 }
 
+
 // Timer code
 static __IO uint32_t TimingDelay;
 
+// Use outside of any tasks
 void Delay(uint32_t nTime){
+    // Enable Timer Interrupt , enable timer
+    TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+    TIM_Cmd(TIM3, ENABLE);
+
     TimingDelay = nTime;
     while(TimingDelay != 0);
+
+    // Disable timer interrupt, disable timer
+    TIM_ITConfig(TIM3, TIM_IT_Update, DISABLE);
+    TIM_Cmd(TIM3, DISABLE);
 }
 
-void SysTick_Handler(void){
-    if(TimingDelay != 0x00)
-        TimingDelay --;
+void TIM3_IRQHandler(void)
+{
+  if(TimingDelay != 0x00)
+    TimingDelay --;
+  TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 }

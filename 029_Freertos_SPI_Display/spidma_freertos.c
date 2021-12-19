@@ -3,9 +3,38 @@
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_spi.h>
 #include <stm32f10x_dma.h>
-#include "spidma.h"
+#include "spidma_freertos.h"
 
 #define MIN_DMA_BLOCK 4 + 1
+
+xSemaphoreHandle spi1Mutex; // mutex for SPI1/SPI2 usage
+xSemaphoreHandle spi2Mutex;
+
+xSemaphoreHandle spi1dmaMutex; // mutex for DMA channels. Async - SPI function starts operation, but
+xSemaphoreHandle spi2dmaMutex; // doesn't wait till its completion. To start operation on the same DMA channel, however,
+                               // you will need to wait till the mutex is freed
+
+BaseType_t takeSPISemaphore(SPI_TypeDef* SPIx)
+{
+    // If scheduler not running we don't need a mutex
+    if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) return pdTRUE;
+    if (SPIx == SPI1) return xSemaphoreTake(spi1Mutex, portMAX_DELAY);
+    else return xSemaphoreTake(spi2Mutex, portMAX_DELAY);
+}
+
+void giveSPISemaphore(SPI_TypeDef* SPIx)
+{
+    // If scheduler not runing we don't need a mutex
+    if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) return;
+    if (SPIx == SPI1) xSemaphoreGive(spi1Mutex);
+    else xSemaphoreGive(spi2Mutex);
+}
+
+BaseType_t takeDMASemaphore(SPI_TypeDef* SPIx)
+{
+    if (SPIx == SPI1) return xSemaphoreTake(spi1dmaMutex, portMAX_DELAY);
+    else return xSemaphoreTake(spi2dmaMutex, portMAX_DELAY);
+}
 
 void spiInit(SPI_TypeDef *SPIx)
 {
@@ -60,6 +89,26 @@ void spiInit(SPI_TypeDef *SPIx)
     SPI_InitStructure.SPI_CRCPolynomial = 7;
     SPI_Init(SPIx, &SPI_InitStructure);
 
+    // For DMA interrupts
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel3_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = (uint8_t)(configKERNEL_INTERRUPT_PRIORITY >> 4);
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel5_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = (uint8_t)(configKERNEL_INTERRUPT_PRIORITY >> 4);
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    spi1Mutex = xSemaphoreCreateMutex();
+    spi2Mutex = xSemaphoreCreateMutex();
+
+    spi1dmaMutex = xSemaphoreCreateMutex();
+    spi2dmaMutex = xSemaphoreCreateMutex();
+
     SPI_Cmd(SPIx, ENABLE);
 }
 
@@ -71,6 +120,12 @@ void spiInit(SPI_TypeDef *SPIx)
  */
 static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *rbuf, unsigned count)
 {
+    int send    = (tbuf) ? 1 : 0;
+    int receive = (rbuf) ? 1 : 0;
+    if (!send && !receive) return 0;
+
+    uint16_t dummy[] = {0xffff};
+
     DMA_Channel_TypeDef *rxChan, *txChan;
     uint32_t rxFlag, txFlag;
 
@@ -97,7 +152,7 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
     
     DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&(SPIx->DR));
     DMA_InitStructure.DMA_PeripheralDataSize = (half) ? DMA_PeripheralDataSize_Byte : DMA_PeripheralDataSize_HalfWord;
-    DMA_InitStructure.DMA_MemoryDataSize = (half) ? DMA_PeripheralDataSize_Byte : DMA_PeripheralDataSize_HalfWord;
+    DMA_InitStructure.DMA_MemoryDataSize = (half) ? DMA_MemoryDataSize_Byte : DMA_MemoryDataSize_HalfWord;
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
     DMA_InitStructure.DMA_BufferSize = count;
     DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
@@ -106,15 +161,15 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
 
     // Rx Channel
     
-    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)rbuf;
-    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (receive) ? (uint32_t)rbuf : (uint32_t)dummy;
+    DMA_InitStructure.DMA_MemoryInc = (receive) ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
     DMA_Init(rxChan, &DMA_InitStructure);
     
     // Tx channel
     
-    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)tbuf;
-    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (send) ? (uint32_t)tbuf : (uint32_t)dummy;
+    DMA_InitStructure.DMA_MemoryInc = (send) ? DMA_MemoryInc_Enable : DMA_MemoryInc_Disable;
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
     DMA_Init(txChan, &DMA_InitStructure);
 
@@ -126,13 +181,24 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
     // Enable SPI TX/RX request
     SPI_I2S_DMACmd(SPIx, SPI_I2S_DMAReq_Rx | SPI_I2S_DMAReq_Tx , ENABLE);
 
-    // Wait for completion
-    
-    if (tbuf) {
-        while (DMA_GetFlagStatus(txFlag) == RESET);
-    } 
-    if (rbuf) {
-        while (DMA_GetFlagStatus(rxFlag) == RESET);
+    // If schedule is not running, wait for completion
+    if (xTaskGetSchedulerState() != taskSCHEDULER_RUNNING)
+    {
+        if (send) {
+            while (DMA_GetFlagStatus(txFlag) == RESET);
+        } 
+        if (receive) {
+            while (DMA_GetFlagStatus(rxFlag) == RESET);
+        }
+    }
+    // Otherwise, we can enable async dma regulation
+    else
+    {
+        // Give semaphore in interrupt handler
+        if (takeDMASemaphore(SPIx) != pdTRUE) return 0;
+        // Enable interrupts for complete transfers
+        DMA_ITConfig(txChan, DMA_IT_TC, ENABLE);
+        return count;
     }
 
     // Disable channels
@@ -144,10 +210,17 @@ static int xchng_datablock(SPI_TypeDef *SPIx, int half, const void *tbuf, void *
     return count;
 }
 
-int spiReadWrite(SPI_TypeDef* SPIx, uint8_t *rbuf, const uint8_t *tbuf, int cnt, enum spiSpeed speed)
+int spiReadWrite(SPI_TypeDef* SPIx, uint8_t *rbuf, const uint8_t *tbuf, int cnt, enum spiSpeed speed, selectCB_t selectCB)
 {
+    if (takeSPISemaphore(SPIx) != pdTRUE) return 0;
+
+    // Enable CS
+    selectCB(1);
+
     if (cnt >= MIN_DMA_BLOCK) {
-        return xchng_datablock(SPIx, 1, tbuf, rbuf, cnt);
+        int res = xchng_datablock(SPIx, 1, tbuf, rbuf, cnt);
+        selectCB(0);
+        return res;
     }
 
     int i;
@@ -167,11 +240,18 @@ int spiReadWrite(SPI_TypeDef* SPIx, uint8_t *rbuf, const uint8_t *tbuf, int cnt,
             SPI_I2S_ReceiveData(SPIx);
         }
     }
+    selectCB(0);
+    giveSPISemaphore(SPIx);
     return i;
 }
 
-int spiReadWrite16(SPI_TypeDef* SPIx, uint16_t *rbuf, const uint16_t *tbuf, int cnt, enum spiSpeed speed)
+int spiReadWrite16(SPI_TypeDef* SPIx, uint16_t *rbuf, const uint16_t *tbuf, int cnt, enum spiSpeed speed, selectCB_t selectCB)
 {
+    if (takeSPISemaphore(SPIx) != pdTRUE) return 0;
+
+    // Enable CS
+    selectCB(1);
+
     int i;
     SPIx->CR1 = (SPIx->CR1 & ~SPI_BaudRatePrescaler_256) | speeds[speed];
     SPI_DataSizeConfig(SPIx, SPI_DataSize_16b);
@@ -179,6 +259,8 @@ int spiReadWrite16(SPI_TypeDef* SPIx, uint16_t *rbuf, const uint16_t *tbuf, int 
     if (cnt >= MIN_DMA_BLOCK) {
         int res = xchng_datablock(SPIx, 0, tbuf, rbuf, cnt);
         SPI_DataSizeConfig(SPIx, SPI_DataSize_8b);
+        selectCB(0);
+
         return res;
     }
 
@@ -196,5 +278,29 @@ int spiReadWrite16(SPI_TypeDef* SPIx, uint16_t *rbuf, const uint16_t *tbuf, int 
         }
     }
     SPI_DataSizeConfig(SPIx, SPI_DataSize_8b);
+    selectCB(0);
+    giveSPISemaphore(SPIx);
     return i;
+}
+
+void DMA1_Channel3_IRQHandler(void)
+{
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+    if (DMA_GetITStatus(DMA1_IT_TC3)) { // Transfer complete
+        DMA_ClearITPendingBit(DMA1_IT_TC3);
+        // release semaphore
+        xSemaphoreGiveFromISR(spi1dmaMutex, &xHigherPriorityTaskWoken);
+    }
+    portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+}
+
+void DMA1_Channel5_IRQHandler(void)
+{
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+    if (DMA_GetITStatus(DMA1_IT_TC5)) { // Transfer complete
+        DMA_ClearITPendingBit(DMA1_IT_TC5);
+        // release semaphore
+        xSemaphoreGiveFromISR(spi2dmaMutex, &xHigherPriorityTaskWoken);
+    }
+    portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
 }

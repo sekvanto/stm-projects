@@ -14,7 +14,7 @@ vpath %.c $(FreeRTOS)/portable/GCC/ARM_CM3
 
 # object files
 
-OBJS  =  $(STARTUP) main.o uartfc.o
+OBJS  =  $(STARTUP) main.o uartfc_freertos.o
 OBJS +=  tasks.o queue.o list.o timers.o heap_1.o port.o
 OBJS +=  stm32f10x_gpio.o stm32f10x_rcc.o stm32f10x_usart.o misc.o
 

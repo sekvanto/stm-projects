@@ -6,7 +6,7 @@
 #include <projdefs.h>
 #include <FreeRTOS.h>
 #include <queue.h>
-#include "uartfc.h"
+#include "uartfc_freertos.h"
 
 #define QUEUE_SIZE 100
 #define HIGH_WATER (QUEUE_SIZE - 6)

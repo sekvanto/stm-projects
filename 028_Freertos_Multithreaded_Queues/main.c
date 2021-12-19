@@ -9,7 +9,7 @@
 #include <FreeRTOS.h>
 #include <timers.h>
 #include <semphr.h>
-#include "uartfc.h"
+#include "uartfc_freertos.h"
 
 xSemaphoreHandle uartRcvMutex;
 
