@@ -2,7 +2,7 @@
 #include <stm32f10x_usart.h>
 #include "uart.h"
 #include "xprintf.h"
-#include "spi.h"
+#include "spidma.h"
 #include "wav.h"
 #include "delay.h"
 #include "ff9/src/ff.h"
@@ -33,7 +33,7 @@ int main(void)
     f_mount(0, &Fatfs);
     while (1)
     {
-        int result = wav_play("/wav/loop.wav");
+        int result = wav_play("loop.wav");
     }
     f_mount(0, 0);
 }

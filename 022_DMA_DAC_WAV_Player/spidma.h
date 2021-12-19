@@ -1,6 +1,11 @@
 #ifndef SPI_H
 #define SPI_H
 
+/**
+ * This module utilezes DMA transfers for all transfers
+ * longer than 4 data items
+ */
+
 #include <stm32f10x_spi.h>
 
 enum spiSpeed { SPI_SLOW , SPI_MEDIUM, SPI_FAST };

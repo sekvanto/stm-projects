@@ -36,7 +36,7 @@
 #include <stm32f10x_spi.h>
 #include <stm32f10x_rcc.h>
 #include <stm32f10x_gpio.h>
-#include "spi.h"
+#include "spidma.h"
 #include "delay.h" // for Delay()
 
 #define GPIO_Pin_CS GPIO_Pin_6
@@ -44,7 +44,7 @@
 #define RCC_APB2Periph_GPIO_CS RCC_APB2Periph_GPIOC
 #define SD_SPI SPI2
 
-enum spiSpeed Speed = SPI_SLOW;
+enum spiSpeed Speed = SPI_FAST;
 
 /*! stopheader !*/
 
