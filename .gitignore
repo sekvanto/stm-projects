@@ -84,3 +84,6 @@
 
 029_Freertos_SPI_Display/*.d
 029_Freertos_SPI_Display/*.o
+
+030_Freertos_FatFS/*.d
+030_Freertos_FatFS/*.o
